@@ -58,23 +58,53 @@ export const APPS: Record<AppId, AppDefinition> = {
   }
 };
 
+const SYSTEM_INIT_TIME = Date.now();
+
 export const INITIAL_FILES: FileSystemState = {
-  'root': { id: 'root', parentId: null, name: 'C:', type: FileType.FOLDER, children: ['documents', 'desktop_folder'] },
-  'documents': { id: 'documents', parentId: 'root', name: 'Documents', type: FileType.FOLDER, children: ['readme'] },
-  'desktop_folder': { id: 'desktop_folder', parentId: 'root', name: 'Desktop', type: FileType.FOLDER, children: ['welcome'] },
+  'root': { 
+    id: 'root', 
+    parentId: null, 
+    name: 'C:', 
+    type: FileType.FOLDER, 
+    children: ['documents', 'desktop_folder'],
+    createdAt: SYSTEM_INIT_TIME,
+    updatedAt: SYSTEM_INIT_TIME
+  },
+  'documents': { 
+    id: 'documents', 
+    parentId: 'root', 
+    name: 'Documents', 
+    type: FileType.FOLDER, 
+    children: ['readme'],
+    createdAt: SYSTEM_INIT_TIME,
+    updatedAt: SYSTEM_INIT_TIME
+  },
+  'desktop_folder': { 
+    id: 'desktop_folder', 
+    parentId: 'root', 
+    name: 'Desktop', 
+    type: FileType.FOLDER, 
+    children: ['welcome'],
+    createdAt: SYSTEM_INIT_TIME,
+    updatedAt: SYSTEM_INIT_TIME
+  },
   'readme': { 
     id: 'readme', 
     parentId: 'documents', 
     name: 'readme.txt', 
     type: FileType.FILE, 
-    content: 'Welcome to React WebOS!\n\nThis is a fully functional simulation built with React and TypeScript.\nTry opening the Gemini Assistant to chat with AI.' 
+    content: 'Welcome to React WebOS!\n\nThis is a fully functional simulation built with React and TypeScript.\nTry opening the Gemini Assistant to chat with AI.',
+    createdAt: SYSTEM_INIT_TIME,
+    updatedAt: SYSTEM_INIT_TIME
   },
   'welcome': {
     id: 'welcome',
     parentId: 'desktop_folder',
     name: 'Hello.txt',
     type: FileType.FILE,
-    content: 'Hello World! You can edit this file.'
+    content: 'Hello World! You can edit this file.',
+    createdAt: SYSTEM_INIT_TIME,
+    updatedAt: SYSTEM_INIT_TIME
   }
 };
 

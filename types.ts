@@ -52,6 +52,8 @@ export interface FileSystemNode {
   content?: string; // Only for files
   children?: string[]; // IDs of children (if folder)
   icon?: string;
+  createdAt: number;
+  updatedAt: number;
 }
 
 export interface FileSystemState {

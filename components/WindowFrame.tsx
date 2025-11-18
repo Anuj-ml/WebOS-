@@ -87,14 +87,19 @@ export const WindowFrame: React.FC<WindowFrameProps> = ({ window: win, children 
 
   return (
     <div 
-      className={`absolute flex flex-col rounded-lg overflow-hidden shadow-2xl border 
-                  ${isActive ? 'border-blue-400 z-50' : 'border-gray-600/30'}
+      className={`absolute flex flex-col rounded-lg overflow-hidden border 
+                  ${isActive ? 'z-50' : 'z-0'}
+                  ${isDragging 
+                    ? 'border-blue-500 opacity-80 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] cursor-grabbing ring-4 ring-blue-500/10' 
+                    : `shadow-2xl ${isActive ? 'border-blue-400' : 'border-gray-600/30'}`}
                   transition-shadow duration-200`}
       style={{ 
         ...frameStyle, 
         zIndex: win.zIndex,
         backgroundColor: 'rgba(255, 255, 255, 0.95)',
-        backdropFilter: 'blur(12px)'
+        backdropFilter: 'blur(12px)',
+        // Ensure no transition on position during drag to prevent lag
+        transition: isDragging || isResizing ? 'none' : 'width 0.2s, height 0.2s, top 0.2s, left 0.2s, box-shadow 0.2s'
       }}
       onMouseDown={handleMouseDown}
     >
@@ -102,6 +107,7 @@ export const WindowFrame: React.FC<WindowFrameProps> = ({ window: win, children 
       <div 
         className={`h-9 flex items-center justify-between px-3 select-none
                    ${isActive ? 'bg-gray-200/80 text-gray-800' : 'bg-gray-100/80 text-gray-500'}
+                   ${isDragging ? 'cursor-grabbing' : 'cursor-default'}
                    border-b border-gray-300/50`}
         onDoubleClick={() => toggleMaximizeWindow(win.id)}
         onMouseDown={handleHeaderDown}
@@ -136,6 +142,11 @@ export const WindowFrame: React.FC<WindowFrameProps> = ({ window: win, children 
       {/* Content */}
       <div className="flex-1 overflow-hidden relative bg-white/50">
         {children}
+        
+        {/* Overlay to capture events over iframes during drag/resize */}
+        {(isDragging || isResizing) && (
+            <div className="absolute inset-0 bg-transparent z-[100]" />
+        )}
       </div>
 
       {/* Resize Handle */}

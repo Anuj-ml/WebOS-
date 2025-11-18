@@ -25,6 +25,9 @@ interface OSContextType {
   // File System Actions
   updateFileContent: (id: string, content: string) => void;
   createFile: (parentId: string, name: string, type: FileType) => void;
+  moveFile: (fileId: string, newParentId: string) => void;
+  renameFile: (id: string, newName: string) => void;
+  deleteFile: (id: string) => void;
 }
 
 const OSContext = createContext<OSContextType | undefined>(undefined);
@@ -115,19 +118,26 @@ export const OSProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const updateFileContent = useCallback((id: string, content: string) => {
     setFiles(prev => ({
       ...prev,
-      [id]: { ...prev[id], content }
+      [id]: { 
+        ...prev[id], 
+        content,
+        updatedAt: Date.now()
+      }
     }));
   }, []);
 
   const createFile = useCallback((parentId: string, name: string, type: FileType) => {
     const id = `file-${Date.now()}`;
+    const now = Date.now();
     const newNode: FileSystemNode = {
       id,
       parentId,
       name,
       type,
       content: type === FileType.FILE ? '' : undefined,
-      children: type === FileType.FOLDER ? [] : undefined
+      children: type === FileType.FOLDER ? [] : undefined,
+      createdAt: now,
+      updatedAt: now
     };
 
     setFiles(prev => {
@@ -137,30 +147,143 @@ export const OSProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         [id]: newNode,
         [parentId]: {
           ...parent,
-          children: [...(parent.children || []), id]
+          children: [...(parent.children || []), id],
+          updatedAt: now
         }
       };
     });
   }, []);
 
+  const moveFile = useCallback((fileId: string, newParentId: string) => {
+    setFiles(prev => {
+      const file = prev[fileId];
+      const oldParentId = file.parentId;
+      const newParent = prev[newParentId];
+
+      // Validations
+      if (!file || !newParent) return prev; // Invalid IDs
+      if (oldParentId === newParentId) return prev; // No change
+      if (newParent.type !== FileType.FOLDER) return prev; // Cannot move into a file
+      if (fileId === newParentId) return prev; // Cannot move into self
+
+      // Circular dependency check (cannot move folder into its own descendant)
+      let currentCheck: string | null = newParentId;
+      let isCircular = false;
+      while (currentCheck) {
+        if (currentCheck === fileId) {
+          isCircular = true;
+          break;
+        }
+        currentCheck = prev[currentCheck].parentId;
+      }
+      if (isCircular) return prev;
+
+      // Perform move
+      const nextFiles = { ...prev };
+      const now = Date.now();
+      
+      // 1. Remove from old parent
+      if (oldParentId && nextFiles[oldParentId]) {
+        nextFiles[oldParentId] = {
+          ...nextFiles[oldParentId],
+          children: nextFiles[oldParentId].children?.filter(c => c !== fileId) || [],
+          updatedAt: now
+        };
+      }
+
+      // 2. Add to new parent
+      nextFiles[newParentId] = {
+        ...nextFiles[newParentId],
+        children: [...(nextFiles[newParentId].children || []), fileId],
+        updatedAt: now
+      };
+
+      // 3. Update file parent ref
+      nextFiles[fileId] = {
+        ...nextFiles[fileId],
+        parentId: newParentId,
+        updatedAt: now
+      };
+
+      return nextFiles;
+    });
+  }, []);
+
+  const renameFile = useCallback((id: string, newName: string) => {
+    if (!newName.trim()) return;
+    setFiles(prev => ({
+      ...prev,
+      [id]: { 
+        ...prev[id], 
+        name: newName.trim(),
+        updatedAt: Date.now() 
+      }
+    }));
+  }, []);
+
+  const deleteFile = useCallback((id: string) => {
+    setFiles(prev => {
+      // Recursive function to collect all descendant IDs to ensure clean removal
+      const idsToDelete = new Set<string>();
+      
+      const collectIds = (nodeId: string) => {
+        idsToDelete.add(nodeId);
+        const node = prev[nodeId];
+        if (node && node.children) {
+          node.children.forEach(collectIds);
+        }
+      };
+      
+      // Check if node exists before starting
+      if (prev[id]) {
+        collectIds(id);
+      } else {
+        return prev;
+      }
+
+      const nextFiles = { ...prev };
+      const targetNode = prev[id];
+
+      // Remove from parent's children list
+      if (targetNode.parentId && nextFiles[targetNode.parentId]) {
+        const parent = nextFiles[targetNode.parentId];
+        nextFiles[targetNode.parentId] = {
+          ...parent,
+          children: parent.children?.filter(childId => childId !== id) || [],
+          updatedAt: Date.now()
+        };
+      }
+
+      // Remove all collected IDs from state
+      idsToDelete.forEach(deleteId => {
+        delete nextFiles[deleteId];
+      });
+
+      return nextFiles;
+    });
+  }, []);
+
   return (
-    <OSContext.Provider value={{
-      windows,
-      activeWindowId,
-      files,
-      wallpaper,
+    <OSContext.Provider value={{ 
+      windows, 
+      activeWindowId, 
+      files, 
+      wallpaper, 
       isStartMenuOpen,
-      openWindow,
-      closeWindow,
-      minimizeWindow,
-      toggleMaximizeWindow,
-      focusWindow,
-      updateWindowPosition,
+      openWindow, 
+      closeWindow, 
+      minimizeWindow, 
+      toggleMaximizeWindow, 
+      focusWindow, 
+      updateWindowPosition, 
       updateWindowSize,
       toggleStartMenu,
       setWallpaper,
       updateFileContent,
-      createFile
+      createFile,
+      moveFile,
+      renameFile,
+      deleteFile
     }}>
       {children}
     </OSContext.Provider>
@@ -169,6 +292,8 @@ export const OSProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
 export const useOS = () => {
   const context = useContext(OSContext);
-  if (!context) throw new Error('useOS must be used within OSProvider');
+  if (context === undefined) {
+    throw new Error('useOS must be used within an OSProvider');
+  }
   return context;
 };
