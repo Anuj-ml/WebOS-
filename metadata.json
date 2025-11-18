@@ -1,0 +1,5 @@
+{
+  "name": "React WebOS",
+  "description": "A fully functional desktop environment in the browser featuring a window manager, file system, text editor, and Gemini-powered AI assistant.",
+  "requestFramePermissions": []
+}
